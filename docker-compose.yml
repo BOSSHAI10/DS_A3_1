@@ -12,8 +12,13 @@ services:
       # AM SCOS linia cu tcp://... și exposedbydefault
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443" # Activează portul HTTPS
+      # (Opțional) Redirecționare automată HTTP -> HTTPS
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
     ports:
       - "80:80"
+      - "443:443"
       - "8080:8080"
     # AM SCOS extra_hosts
 
@@ -21,6 +26,8 @@ services:
     # Asta îi dă voie lui Traefik să "vadă" ce containere rulează
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik/certs:/etc/certs:ro
+      - ./traefik/traefik_dynamic.yml:/etc/traefik/traefik_dynamic.yml:ro # Montează config-ul
 
     networks:
       - demo_net
@@ -48,7 +55,8 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
-      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.routers.frontend.entrypoints=websecure" # Folosește HTTPS
+      - "traefik.http.routers.frontend.tls=true"             # Activează TLS
       - "traefik.http.services.frontend.loadbalancer.server.port=5173"
       - "traefik.http.routers.frontend.priority=10"
 
@@ -75,7 +83,8 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.gateway.rule=PathPrefix(`/auth`) || PathPrefix(`/users`) || PathPrefix(`/devices`) || PathPrefix(`/api`) || PathPrefix(`/people`)"
-      - "traefik.http.routers.gateway.entrypoints=web"
+      - "traefik.http.routers.gateway.entrypoints=websecure"
+      - "traefik.http.routers.api-gateway.tls=true"             # Activează TLS
       - "traefik.http.services.gateway.loadbalancer.server.port=8084"
       - "traefik.http.routers.gateway.priority=20"
 
@@ -99,7 +108,7 @@ services:
     networks:
       - demo_net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/api/users"]
+      test: ["CMD", "curl", "-f", "https://localhost:8081/api/users"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -266,7 +275,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.monitoring.rule=PathPrefix(`/monitoring`)"
-      - "traefik.http.routers.monitoring.entrypoints=web"
+      - "traefik.http.routers.monitoring.entrypoints=websecure"
       - "traefik.http.services.monitoring.loadbalancer.server.port=8085"
 
   # --- BAZA DE DATE MONITORIZARE ---
