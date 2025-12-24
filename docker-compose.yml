@@ -87,6 +87,8 @@ services:
       - "traefik.http.routers.api-gateway.tls=true"             # Activează TLS
       - "traefik.http.services.gateway.loadbalancer.server.port=8084"
       - "traefik.http.routers.gateway.priority=20"
+      - "traefik.http.middlewares.api-gateway-strip.stripprefix.prefixes=/api"
+      - "traefik.http.routers.api-gateway.middlewares=api-gateway-strip"
 
   # --- MICROSERVICII ---
   users-service:
